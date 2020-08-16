@@ -1,4 +1,4 @@
-import 'ext4ts';
+import '@tszone/ext';
 import { changeType } from './type';
 import * as ops from './ops';
 import {
