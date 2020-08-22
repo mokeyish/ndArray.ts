@@ -2,10 +2,10 @@ import { iterAxes, reduceAxes } from '../utils';
 import { NdArray } from '../nd-array';
 import { Rank, RankDown, ShapeMap } from '../types';
 
-export function all<T, R extends Rank>(ndArray: NdArray<number, R>): boolean;
-export function all<T, R extends Rank>(ndArray: NdArray<number, R>, axis: number): NdArray<boolean, RankDown[R]>;
-export function all<T, R extends Rank>(ndArray: NdArray<number, R>, axis?: number): NdArray<boolean, RankDown[R]> | boolean;
-export function all<T, R extends Rank>(ndArray: NdArray<number, R>, axis?: number): NdArray<boolean, RankDown[R]> | boolean {
+export function all<T extends (number | boolean) , R extends Rank>(ndArray: NdArray<number, R>): boolean;
+export function all<T extends (number | boolean), R extends Rank>(ndArray: NdArray<T, R>, axis: number): NdArray<boolean, RankDown[R]>;
+export function all<T extends (number | boolean), R extends Rank>(ndArray: NdArray<T, R>, axis?: number): NdArray<boolean, RankDown[R]> | boolean;
+export function all<T extends (number | boolean), R extends Rank>(ndArray: NdArray<T, R>, axis?: number): NdArray<boolean, RankDown[R]> | boolean {
     const shape = ndArray.shape;
     if (axis === undefined || shape.length === 1) {
         return ndArray.data.every((v) => v !== 0);

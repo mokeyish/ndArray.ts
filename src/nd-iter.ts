@@ -1,4 +1,4 @@
-import { indexToAxes } from './utils';
+import { castIndexToAxes } from './utils';
 import { Rank, ShapeMap } from './types';
 import { NdArray } from './nd-array';
 
@@ -11,7 +11,7 @@ export class NdIter<T, R extends Rank> {
         if (this._index === -1) {
             throw new Error('please run iter.moveNext() first.');
         }
-        return indexToAxes(this._index, this.ndArray.shape);
+        return castIndexToAxes(this._index, this.ndArray.shape);
     }
     public get current(): T {
         if (this._index === -1) {

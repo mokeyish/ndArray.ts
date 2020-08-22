@@ -29,7 +29,7 @@ export function validateAxesRange(axes: number[], shape: number[]): boolean {
     return true;
 }
 
-export function axesToIndex<D extends number[]>(axes: D, radix: D): number {
+export function castAxesToIndex<D extends number[]>(axes: D, radix: D): number {
     let index = 0;
     for (let i = 0; i < axes.length; i++) {
         index += axes[i] * radix[i];
@@ -37,7 +37,7 @@ export function axesToIndex<D extends number[]>(axes: D, radix: D): number {
     return index;
 }
 
-export function indexToAxes<R extends Rank>(index: number, shape: ShapeMap[R]): ShapeMap[R] {
+export function castIndexToAxes<R extends Rank>(index: number, shape: ShapeMap[R]): ShapeMap[R] {
     let x = shape.reduce((p, c) => p * c);
     if (index < 0 || index >= x) {
         throw new Error();

@@ -17,6 +17,7 @@ export interface Dim<L extends number> extends Array<number> {
     length: L;
 }
 
+export type Ix = Dim<number>;
 export type Ix1 = Dim<1>;
 export type Ix2 = Dim<2>;
 export type Ix3 = Dim<3>;

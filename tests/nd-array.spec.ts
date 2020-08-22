@@ -1,5 +1,5 @@
 
-import { array1d, array2d, array3d, axesToIndex, indexToAxes, NdArray } from '../src';
+import { array1d, array2d, array3d, castAxesToIndex, castIndexToAxes, NdArray } from '../src';
 
 describe('nd-array', () => {
     it('1d', () => {
@@ -34,8 +34,8 @@ describe('nd-array', () => {
             data[i] = i + 1;
         }
         const a = NdArray.fromArray(data, [4, 3, 2], 'uint16');
-        const index = axesToIndex([2, 2, 1], a.radix)
-        const axes = indexToAxes(index, a.shape);
+        const index = castAxesToIndex([2, 2, 1], a.radix)
+        const axes = castIndexToAxes(index, a.shape);
         expect(axes[0]).toEqual(2);
         expect(axes[1]).toEqual(2);
         expect(axes[2]).toEqual(1);

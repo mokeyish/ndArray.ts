@@ -17,11 +17,11 @@ import {
 } from './types';
 import { isArrayLike } from './type-guards';
 import {
-    axesToIndex,
+    castAxesToIndex,
     changeType,
     flattenArray,
     getArrayShape,
-    indexToAxes,
+    castIndexToAxes,
     shapeArray,
     validateAxesRange
 } from './utils';
@@ -148,7 +148,7 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
     public set(axes: ShapeMap[R], val: T): void;
     public set<D extends Dim<number>>(axes: D, val: NdArrayIn<T, R, D>): void
     public set<D extends Dim<number>>(axes: D | ShapeMap[R], val: NdArrayIn<T, R, D> | T): void {
-        const index = axesToIndex(axes, this._radix);
+        const index = castAxesToIndex(axes, this._radix);
         if (val instanceof Array) {
             const data = flattenArray<T>(val);
             for (let i = 0; i < data.length; i++) {
@@ -164,7 +164,7 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
         const shape = this._shape;
         for (let i = 0; i < data.length; i++) {
             const val = this._data[i];
-            const axes = indexToAxes(i, shape);
+            const axes = castIndexToAxes(i, shape);
             data[i] = callbackfn(val, axes, i, this);
         }
         return NdArray.fromArray(data, shape, dtype) as unknown as NdArray<U, R>;
@@ -209,9 +209,9 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
     }
 
     // #region [ops]
-    public all(this: NdArray<number, R>): boolean;
-    public all(this: NdArray<number, R>, axis: number): NdArray<boolean, RankDown[R]>;
-    public all(this: NdArray<number, R>, axis?: number): NdArray<boolean, RankDown[R]> | boolean {
+    public all(this: NdArray<number | boolean, R>): boolean;
+    public all(this: NdArray<number | boolean, R>, axis: number): NdArray<boolean, RankDown[R]>;
+    public all(this: NdArray<number | boolean, R>, axis?: number): NdArray<boolean, RankDown[R]> | boolean {
         return ops.all(this, axis);
     }
     public argmax(this: NdArray<number, R>): number;
