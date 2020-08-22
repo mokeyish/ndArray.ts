@@ -1,9 +1,13 @@
+import { NdArray } from '../nd-array';
+import { Rank } from '../types';
 
-import { INumericNdArray, Ix } from '../interface';
-
+export function neg(val: number): number;
 export function neg(val: number[]): number[];
-export function neg<D extends Ix>(val: INumericNdArray<D>): INumericNdArray<D>;
-export function neg<D extends Ix>(val: INumericNdArray<D> | number[] ): INumericNdArray<D> | number[] {
+export function neg<R extends Rank>(val: NdArray<number, R>): NdArray<number, R>;
+export function neg<R extends Rank>(val: NdArray<number, R> | number[] | number ): NdArray<number, R> | number[] | number {
+    if (typeof val === 'number') {
+        return -val;
+    }
     if (val instanceof Array) {
         return val.map(v => -v);
     } else {

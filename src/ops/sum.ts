@@ -1,26 +1,26 @@
-import { INumericNdArray, Ix, Ix1, IxD } from '../interface';
 import { iterAxes, reduceAxes } from '../utils';
+import { Rank, RankDown, ShapeMap } from '../types';
 import { NdArray } from '../nd-array';
 
 
-export function sum<D extends Ix>(ndArray: INumericNdArray<D> | number[]): number;
-export function sum<D extends Ix>(ndArray: INumericNdArray<D>, axis: number): INumericNdArray<IxD<D>>;
-export function sum<D extends Ix>(ndArray: INumericNdArray<D>, axis: number | undefined):  number | INumericNdArray<IxD<D>>;
-export function sum<D extends Ix>(ndArray: INumericNdArray<D> | number[] , axis?: number): number | INumericNdArray<IxD<D>> {
+export function sum<R extends Rank>(ndArray: NdArray<number, R> | number[]): number;
+export function sum<R extends Rank>(ndArray: NdArray<number, R>, axis: number): NdArray<number, RankDown[R]>;
+export function sum<R extends Rank>(ndArray: NdArray<number, R>, axis?: number): NdArray<number, RankDown[R]> | number;
+export function sum<R extends Rank>(ndArray: NdArray<number, R> | number[] , axis?: number): NdArray<number, RankDown[R]> | number {
     if (ndArray instanceof Array) {
         return ndArray.reduce((p, c) => p + c);
     }
     const shape = ndArray.shape;
     if (axis === undefined || shape.length === 1) {
-        return ndArray.data.reduce((p: any, c: any) => p + c);
+        return ndArray.data.reduce((p, c) => p + c);
     }
     if (axis < 0 || axis >= shape.length) {
         throw new Error('axis out of shape range');
     }
     const reduceShape = reduceAxes(shape, axis);
-    const ret = NdArray.fromArray<number, IxD<D>>(Array<number>(reduceShape.reduce((p, c) => p * c)), reduceShape);
+    const ret = NdArray.fromArray<number, RankDown[R]>(Array(reduceShape.prod()), reduceShape);
 
-    let axes = Array<number>(shape.length).fill(0) as D;
+    let axes = Array<number>(shape.length).fill(0) as ShapeMap[R];
     while (true) {
         const a = [];
         for (let i = 0; i < shape[axis]; i++) {

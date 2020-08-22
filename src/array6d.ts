@@ -1,6 +1,8 @@
-import { Array6D, DataType, Ix6 } from './interface';
+
+import { Array6D, DataType, Rank, ShapeMap } from './types';
 import { NdArray } from './nd-array';
 
-export function array6d<T>(data: T[], shape: Ix6, dtype: DataType = 'generic'): Array6D<T> {
-    return NdArray.array6d(data, shape, dtype);
+
+export function array6d<T>(data: T[], shape: ShapeMap[Rank.R6], dtype: DataType = 'generic'): Array6D<T> {
+    return NdArray.fromArray(data, shape, dtype);
 }

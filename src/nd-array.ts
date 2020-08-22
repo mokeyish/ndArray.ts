@@ -1,33 +1,43 @@
 import '@tszone/ext';
-import { changeType } from './type';
-import * as ops from './ops';
 import {
     Array1D,
     Array2D,
-    Array3D, Array4D, Array5D, Array6D,
+    Array3D,
+    Array4D,
+    Array5D,
+    Array6D,
+    ArrayMap,
     DataType,
-    INdArray,
-    INdArrayGeneric,
-    Ix, IxD,
-    Ix1,
-    Ix2,
-    Ix3,
-    Ix4,
-    Ix5,
-    Ix6, MultiDimensionArray, INumericNdArray
-} from './interface';
+    Dim,
+    NdArrayIn,
+    NdArrayOut,
+    Rank, RankDown,
+    InferRank,
+    ShapeMap
+} from './types';
+import { isArrayLike } from './type-guards';
+import {
+    axesToIndex,
+    changeType,
+    flattenArray,
+    getArrayShape,
+    indexToAxes,
+    shapeArray,
+    validateAxesRange
+} from './utils';
+import { NdIter } from './nd-iter';
+import * as ops from '../src/ops';
 
-
-export class NdArray<T = any, D extends Ix = Ix> implements INdArrayGeneric<T, D> {
-    private readonly _radix: D;
-    private readonly _shape: D;
+// noinspection DuplicatedCode
+export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
+    private readonly _radix: ShapeMap[R];
+    private readonly _shape: ShapeMap[R];
     private readonly _data: T[];
-
-    private constructor(data: T[],  shape: D, public readonly dtype: DataType) {
-        if (data.length !== shape.reduce((p1, c1) => p1 * c1)) {
+    constructor(data: T[], shape: ShapeMap[R], public readonly dtype: DataType) {
+        if (data.length !== shape.prod()) {
             throw new Error('invalid data length and shape');
         }
-        const radix = Array<number>(shape.length) as D;
+        const radix = Array<number>(shape.length) as ShapeMap[R];
         let p = data.length;
         for (let i = 0; i < shape.length; i++) {
             radix[i] = p = p / shape[i];
@@ -37,208 +47,224 @@ export class NdArray<T = any, D extends Ix = Ix> implements INdArrayGeneric<T, D
         this._data = data as T[];
     }
 
-    public static fromArray<T, D extends Ix = Ix1>(data: T[], shape: D, dtype: DataType = 'generic'): INdArray<T, D> {
-        data = changeType(data, dtype);
-        return (new NdArray<T, D>(data, shape, dtype) as unknown) as INdArray<T, D>;
+    public static fromArray<T>(data: ArrayMap<T>[Rank.R6], dtype?: DataType): Array6D<T>;
+    public static fromArray<T>(data: ArrayMap<T>[Rank.R5], dtype?: DataType): Array5D<T>;
+    public static fromArray<T>(data: ArrayMap<T>[Rank.R4], dtype?: DataType): Array4D<T>;
+    public static fromArray<T>(data: ArrayMap<T>[Rank.R3], dtype?: DataType): Array3D<T>;
+    public static fromArray<T>(data: ArrayMap<T>[Rank.R2], dtype?: DataType): Array2D<T>;
+    public static fromArray<T>(data: ArrayMap<T>[Rank.R1], dtype?: DataType): Array1D<T>;
+    public static fromArray<T, D extends Dim<number>>(data: T[], shape: D, dtype?: DataType): NdArray<T, InferRank<D>>;
+    public static fromArray<T, R extends Rank>(data: T[], shape: ShapeMap[R], dtype?: DataType): NdArray<T, R>;
+    public static fromArray<T, D extends Dim<number>>(a: T[] | ArrayMap<T>[InferRank<D>], b?: D | DataType, dtype: DataType = 'generic'): NdArray<T, InferRank<D>> {
+        if (b instanceof Array) {
+            if (isArrayLike<T>(a)) {
+                const data = changeType(a, dtype);
+                const shape = b as unknown as ShapeMap[InferRank<D>];
+                return new NdArray<T, InferRank<D>>(data, shape, dtype);
+            } else {
+                throw new Error('unimplemented');
+            }
+        } else if (isArrayLike(a)) {
+            dtype = b ?? 'generic';
+            const data = changeType(flattenArray<T>(a), dtype);
+            const shape = getArrayShape(a) as ShapeMap[InferRank<D>];
+            return new NdArray<T, InferRank<D>>(data, shape, dtype);
+        } else {
+            throw new Error('unimplemented');
+        }
     }
 
-    public static array1d<T>(data: T[], shape?: Ix1, dtype: DataType = 'generic'): Array1D<T> {
-        shape = [data.length];
+    public static fill<T, D extends Dim<number>>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<number, InferRank<D>> {
+        const len = shape.prod();
+        const data = Array(len).fill(val);
         return NdArray.fromArray(data, shape, dtype);
     }
-    public static array2d<T>(data: T[], shape: Ix2, dtype: DataType = 'generic'): Array2D<T> {
-        return NdArray.fromArray(data, shape, dtype);
+    public static full<T, D extends Dim<number>>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<number, InferRank<D>> {
+        return NdArray.fill(shape, val, dtype);
     }
-    public static array3d<T>(data: T[], shape: Ix3, dtype: DataType = 'generic'): Array3D<T> {
-        return NdArray.fromArray(data, shape, dtype);
+    public static eye<N extends number, M extends (number | N) = N>(n: N, m?: M, k: number = 0, dtype: DataType = 'float64'): Array2D<number> {
+        m = m ?? n as M;
+        const shape: [N, M] = [n, m];
+        const len = shape.prod();
+        const data = NdArray.fromArray<number, Dim<2>>(Array<number>(len).fill(0), [n, m], dtype);
+        const max = Math.min(n, m);
+        for (let i = 0; i < max; i++) {
+            const x = i + k;
+            const y = i;
+            if (x > m - 1) {
+                break;
+            }
+            data.set([y, x], 1.0);
+        }
+        return data;
     }
-    public static array4d<T>(data: T[], shape: Ix4, dtype: DataType = 'generic'): Array4D<T> {
-        return NdArray.fromArray(data, shape, dtype);
+    public static ones<D extends Dim<number>>(shape: D, dtype: DataType = 'float64'): NdArray<number, InferRank<D>> {
+        return NdArray.fill(shape, 1., dtype);
     }
-    public static array5d<T>(data: T[], shape: Ix5, dtype: DataType = 'generic'): Array5D<T> {
-        return NdArray.fromArray(data, shape, dtype);
-    }
-    public static array6d<T>(data: T[], shape: Ix6, dtype: DataType = 'generic'): Array6D<T> {
-        return NdArray.fromArray(data, shape, dtype);
+    public static zeros<D extends Dim<number>>(shape: D, dtype: DataType = 'float64'): NdArray<number, InferRank<D>> {
+        return NdArray.fill(shape, 0., dtype);
     }
 
-    public static ones<D extends Ix>(shape: D): INdArray<number, D> {
-        return NdArray.fill(shape, 1);
+    public static range(start: number, end?: number, step?: number, dtype: DataType = 'float64'): Array1D<number> {
+        return NdArray.fromArray(Array.range(start, end!, step!), dtype);
     }
 
-    public static zeros<D extends Ix>(shape: D): INdArray<number, D> {
-        return NdArray.fill(shape, 0);
-    }
-
-    public static fill<T, D extends Ix>(shape: D, value: T, dtype: DataType = 'generic'): INdArray<T, D> {
-        const len = shape.reduce((p, c) => p * c);
-        const data = Array(len).fill(value);
-        return NdArray.fromArray<T, D>(data, shape, dtype);
-    }
-    public static full<T, D extends Ix>(shape: D, value: T, dtype: DataType = 'generic'): INdArray<T, D> {
-        return NdArray.fill(shape, value, dtype);
-    }
-
-    public get data(): T[] {
+    public get data(): ReadonlyArray<T> {
         return this._data;
     }
-
-    public get shape(): D {
-        return this._shape.slice() as D;
+    public get shape(): ShapeMap[R] {
+        return this._shape;
     }
-
-    public get length(): number {
-        return this.data.length;
+    public get radix(): ShapeMap[R] {
+        return this._radix;
     }
-
     public get rank(): number {
         return this._shape.length;
     }
-
-    public get(...axes: D): T {
-        return this.data[this.castAxesToIndex(axes)] as T;
+    public get length(): number {
+        return this._data.length;
     }
 
-    public set(axes: D, val: T): void {
-        this._data[this.castAxesToIndex(axes)] = val;
-    }
-
-    public ndArray(): MultiDimensionArray<T, D> {
-        function f(data: T[], radix: number[]): any {
-            const d = [];
-            const count = radix[0];
-            const len = data.length / count;
-            const nextRadix = radix.length > 1 ? radix.slice(1, radix.length) : undefined;
-            for (let i = 0; i < len; i++) {
-                const c = data.slice(i * count, (i + 1) * count);
-                if (nextRadix) {
-                    d.push(f(c, nextRadix));
-                } else {
-                    d.push(...c);
-                }
-            }
-            return d;
+    public get(...axes: ShapeMap[R]): T;
+    public get<D extends Dim<number>>(...axes: D): NdArrayOut<T, R, D>;
+    public get<D extends Dim<number>>(...axes: D): unknown {
+        if (!validateAxesRange(axes, this._shape)) {
+            throw Error('index out of range.');
         }
-
-        return f(this._data, this._radix);
-    }
-
-    public reshape<Shape extends Ix = Ix1>(shape: Shape): NdArray<T, Shape> {
-        return new NdArray(this._data, shape, this.dtype);
-    }
-
-    public clone(): INdArray<T, D> {
-        return new NdArray(this._data.slice(), this._shape, this.dtype) as unknown as INdArray<T, D>;
-    }
-
-    public map<U>(callbackfn: (value: T, axes: D, ndArray: INdArray<T, D>) => U, dtype: DataType = 'generic'): INdArray<U, D> {
-        const data: U[] = Array(this.data.length);
-        for (let i = 0; i < this.data.length; i++) {
-            const val = this.data[i] as T;
-            const axes: D = this.castIndexToAxes(i);
-            data[i] = callbackfn(val, axes, this as unknown as INdArray<T, D>);
-        }
-        return NdArray.fromArray<U, D>(data, this.shape, dtype);
-    }
-
-
-
-
-    public checkAxes(axes: D): boolean {
-        if (axes.length !== this._shape.length) {
-            throw new Error();
-        }
-        for (let i = 0; i < this._shape.length; i++) {
-            const a = axes[i];
-            if (a < 0 || a >= this._shape[i]) {
-                return false;
+        let nd: unknown | unknown[] = this.ndArray();
+        for (const i of axes) {
+            if (nd instanceof Array) {
+                nd = nd[i];
+            } else {
+                break;
             }
         }
-        return true;
-    }
-    public index(...axes: D): number {
-        return this.castAxesToIndex(axes);
-    }
-
-    public axes(index: number): D {
-        return this.castIndexToAxes(index);
+        if (nd instanceof Array) {
+            return NdArray.fromArray(nd);
+        }
+        return nd;
     }
 
-    // region [numeric opts]
-    all(): boolean;
-    all(axis: number): INdArray<boolean, IxD<D>>;
-    all(axis?: number): boolean | INdArray<boolean, IxD<D>> {
-        return ops.all<T, D>(this as unknown as INdArray<T, D>, axis);
+    public set(axes: ShapeMap[R], val: T): void;
+    public set<D extends Dim<number>>(axes: D, val: NdArrayIn<T, R, D>): void
+    public set<D extends Dim<number>>(axes: D | ShapeMap[R], val: NdArrayIn<T, R, D> | T): void {
+        const index = axesToIndex(axes, this._radix);
+        if (val instanceof Array) {
+            const data = flattenArray<T>(val);
+            for (let i = 0; i < data.length; i++) {
+                this._data[i + index] = data[i];
+            }
+        } else {
+            this._data[index] = val;
+        }
     }
 
-    private sum(axis?: number): number | INumericNdArray<IxD<D>> {
-        return ops.sum<D>(this as unknown as INumericNdArray<D>, axis);
+    public map<U>(callbackfn: (value: T, axes: ShapeMap[R], index: number, ndArray: this) => U, dtype: DataType = 'generic'): NdArray<U, R> {
+        const data: U[] = Array(this.length);
+        const shape = this._shape;
+        for (let i = 0; i < data.length; i++) {
+            const val = this._data[i];
+            const axes = indexToAxes(i, shape);
+            data[i] = callbackfn(val, axes, i, this);
+        }
+        return NdArray.fromArray(data, shape, dtype) as unknown as NdArray<U, R>;
     }
 
-    private neg(): INdArray<number, D> {
-        return ops.neg(this as unknown as INdArray<number, D>);
+    public clone(): NdArray<T, R> {
+        return new NdArray(this._data.slice(), this._shape, this.dtype);
+    }
+
+    public reshape<U extends Dim<number>>(shape: U): NdArray<T, InferRank<U>> {
+        Object.assign(this, new NdArray(this._data, shape, this.dtype));
+        return this as unknown as NdArray<T, InferRank<U>>;
+    }
+    public flatten(): Array1D<T> {
+        return this.clone().reshape([this.length]);
+    }
+
+    public ndArray(): ArrayMap<T>[R] {
+        return shapeArray(this._data, this._radix);
+    }
+
+    public iter(): NdIter<T, R> {
+        return new NdIter<T, R>(this);
+    }
+
+    public col(this: NdArray<T, Rank.R2>, colIndex: number): T[] {
+        const rowSize = this.shape[0];
+        const data = Array(rowSize);
+        for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+            data[rowIndex] = this.get(rowIndex, colIndex);
+        }
+        return data;
+    }
+
+    public row(this: NdArray<T, Rank.R2>, rowIndex: number): T[] {
+        const colSize = this.shape[1];
+        const data = Array(colSize);
+        for (let colIndex = 0; colIndex < data.length; colIndex++) {
+            data[colIndex] = this.get(rowIndex, colIndex);
+        }
+        return data;
+    }
+
+    // #region [ops]
+    public all(this: NdArray<number, R>): boolean;
+    public all(this: NdArray<number, R>, axis: number): NdArray<boolean, RankDown[R]>;
+    public all(this: NdArray<number, R>, axis?: number): NdArray<boolean, RankDown[R]> | boolean {
+        return ops.all(this, axis);
+    }
+    public argmax(this: NdArray<number, R>): number;
+    public argmax(this: NdArray<number, R>, axis: number): NdArray<number, RankDown[R]>;
+    public argmax(this: NdArray<number, R>, axis?: number): NdArray<number, RankDown[R]> | number {
+        return ops.argmax(this, axis);
+    }
+
+    public sum(this: NdArray<number, R>): number;
+    public sum(this: NdArray<number, R>, axis: number): NdArray<number, RankDown[R]>;
+    public sum(this: NdArray<number, R>, axis?: number): NdArray<number, RankDown[R]> | number {
+        return ops.sum(this, axis);
+    }
+
+    public cumsum(this: NdArray<number, R>): Array1D<number>;
+    public cumsum(this: NdArray<number, R>, axis: number): NdArray<number, R>;
+    public cumsum(this: NdArray<number, R>, axis?: number): NdArray<number, R> | Array1D<number> {
+        return ops.cumsum(this, axis);
+    }
+
+    public neg(this: NdArray<number, R>): NdArray<number, R> {
+        return ops.neg(this);
+    }
+    public add(this: NdArray<number, R>, x: NdArray<number, R> | number): NdArray<number, R> {
+        return ops.add(this, x);
+    }
+    public sub(this: NdArray<number, R>, x: NdArray<number, R> | number): NdArray<number, R> {
+        return ops.sub(this, x);
+    }
+    public mul(this: NdArray<number, R>, x: NdArray<number, R> | number): NdArray<number, R> {
+        return ops.mul(this, x);
+    }
+
+    public div(this: NdArray<number, R>, x: NdArray<number, R> | number): NdArray<number, R> {
+        return ops.div(this, x);
+    }
+    public addAssign(this: NdArray<number, R>, x: NdArray<number, R> | number): void {
+        ops.addAssign(this, x);
+    }
+    public subAssign(this: NdArray<number, R>, x: NdArray<number, R> | number): void {
+        ops.subAssign(this, x);
+    }
+    public mulAssign(this: NdArray<number, R>, x: NdArray<number, R> | number): void {
+        ops.mulAssign(this, x);
+    }
+    public divAssign(this: NdArray<number, R>, x: NdArray<number, R> | number): void {
+        ops.divAssign(this, x);
+    }
+
+    public matmul(this: NdArray<number, Rank.R2>, x: NdArray<number, Rank.R2>): NdArray<number, Rank.R2> {
+        throw new Error('');
     }
     // endregion
-
-
-    public toString(): string {
-        const buffer: string[] = [];
-        function f(data: object, depth: number = 1): void {
-            if (!(data instanceof Array)) {
-                return;
-            }
-            buffer.push('[');
-            for (let i = 0; i < data.length; i++) {
-                const val = data[i];
-                const isArray = Array.isArray(val);
-
-                if (isArray) {
-                    if (i !== 0) {
-                        buffer.push(...Array<string>(depth).fill(' '));
-                    }
-                    f(val, depth + 1);
-                    if (i !== data.length - 1) {
-                        buffer.push('\n');
-                    }
-                } else {
-                    if (i !== 0) {
-                        buffer.push(' ');
-                    }
-                    buffer.push(val.toString());
-                }
-            }
-            buffer.push(']');
-        }
-        f(this.ndArray());
-        return buffer.join('');
-    }
-
-
-    private castAxesToIndex(axes: D): number {
-        if (!this.checkAxes(axes)) {
-            throw new Error();
-        }
-        let index = 0;
-        for (let i = 0; i < this._radix.length; i++) {
-            index += axes[i] * this._radix[i];
-        }
-        return index;
-    }
-
-    private castIndexToAxes(index: number): D {
-        if (index < 0 || index >= this._data.length) {
-            throw new Error();
-        }
-        const shape = this._shape;
-        let x = shape.reduce((p, c) => p * c);
-        return shape.map((v, i) => {
-            if (i === shape.length - 1) {
-                return index;
-            }
-            x = x / shape[i];
-            const a = Math.floor(index / x);
-            index = index % x;
-            return a;
-        }) as D;
-    }
 }
+
+
