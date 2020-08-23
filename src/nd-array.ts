@@ -225,6 +225,21 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
     public sum(this: NdArray<number, R>, axis?: number): NdArray<number, RankDown[R]> | number {
         return ops.sum(this, axis);
     }
+    public avg(this: NdArray<number, R>): number;
+    public avg(this: NdArray<number, R>, axis: number): NdArray<number, RankDown[R]>;
+    public avg(this: NdArray<number, R>, axis?: number): NdArray<number, RankDown[R]> | number {
+        return ops.avg(this, axis);
+    }
+    public max(this: NdArray<number, R>): number;
+    public max(this: NdArray<number, R>, axis: number): NdArray<number, RankDown[R]>;
+    public max(this: NdArray<number, R>, axis?: number): NdArray<number, RankDown[R]> | number {
+        return ops.max(this, axis);
+    }
+    public min(this: NdArray<number, R>): number;
+    public min(this: NdArray<number, R>, axis: number): NdArray<number, RankDown[R]>;
+    public min(this: NdArray<number, R>, axis?: number): NdArray<number, RankDown[R]> | number {
+        return ops.min(this, axis);
+    }
 
     public cumsum(this: NdArray<number, R>): Array1D<number>;
     public cumsum(this: NdArray<number, R>, axis: number): NdArray<number, R>;
