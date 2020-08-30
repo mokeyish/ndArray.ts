@@ -1,5 +1,14 @@
 import { isArrayLike } from './type-guards';
-import { ArrayMap, DataType, Dim, Rank, RankDown, ShapeMap } from './types';
+import {
+    ArrayMap,
+    DataType,
+    InferRank,
+    IxA,
+    Rank,
+    RankDown,
+    ShapeMap
+} from './types';
+import { NdArray } from './nd-array';
 
 export function reduceAxes<R extends Rank>(axes: ShapeMap[R], axis: number): ShapeMap[RankDown[R]] {
     const ret = axes.slice() as ShapeMap[RankDown[R]];
@@ -7,7 +16,7 @@ export function reduceAxes<R extends Rank>(axes: ShapeMap[R], axis: number): Sha
     return ret;
 }
 
-export function iterAxes<D extends Dim<number>>(axes: D, shape: D, axis?: number): D | undefined {
+export function iterAxes<D extends IxA>(axes: D, shape: D, axis?: number): D | undefined {
     for (let i = 0; i < shape.length; i++) {
         if (i === axis) {
             continue;
@@ -29,7 +38,7 @@ export function validateAxesRange(axes: number[], shape: number[]): boolean {
     return true;
 }
 
-export function castAxesToIndex<D extends number[]>(axes: D, radix: D): number {
+export function castAxesToIndex<D extends IxA>(axes: number[], radix: D): number {
     let index = 0;
     for (let i = 0; i < axes.length; i++) {
         index += axes[i] * radix[i];
@@ -37,6 +46,8 @@ export function castAxesToIndex<D extends number[]>(axes: D, radix: D): number {
     return index;
 }
 
+export function castIndexToAxes<D extends IxA>(index: number, shape: D): ShapeMap[InferRank<D>];
+export function castIndexToAxes<R extends Rank>(index: number, shape: ShapeMap[R]): ShapeMap[R];
 export function castIndexToAxes<R extends Rank>(index: number, shape: ShapeMap[R]): ShapeMap[R] {
     let x = shape.reduce((p, c) => p * c);
     if (index < 0 || index >= x) {
@@ -53,8 +64,8 @@ export function castIndexToAxes<R extends Rank>(index: number, shape: ShapeMap[R
     }) as ShapeMap[R];
 }
 
-export function getArrayShape(data: unknown[]): ShapeMap[Rank.R0] {
-    const shape: ShapeMap[Rank.R0] = [data.length];
+export function getArrayShape(data: unknown[]): IxA {
+    const shape: IxA = [data.length];
     function f(d: unknown) {
         if (isArrayLike(d)) {
             shape.push(d.length);
@@ -65,18 +76,21 @@ export function getArrayShape(data: unknown[]): ShapeMap[Rank.R0] {
     return shape;
 }
 
-export function flattenArray<T>(data: unknown[]): T[] {
+export function flattenArray<T>(data: unknown[] | NdArray<T> | T): T[] {
     const ret: T[] = [];
-    function f(d: unknown[]) {
+    function f(d: ReadonlyArray<unknown>) {
         for (const v of d) {
             if (isArrayLike(v)) {
                 f(v);
+            } else if (v instanceof NdArray) {
+                f(v.data);
             } else {
                 ret.push(v as T);
             }
         }
     }
-    f(data);
+
+    f(data instanceof NdArray ? data.data : (data instanceof Array ? data : [data]));
     return ret;
 }
 

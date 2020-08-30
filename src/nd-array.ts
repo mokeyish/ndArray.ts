@@ -8,12 +8,11 @@ import {
     Array6D,
     ArrayMap,
     DataType,
-    Dim,
     NdArrayIn,
     NdArrayOut,
     Rank, RankDown,
     InferRank,
-    ShapeMap
+    ShapeMap, IxA, Ix2, IxD
 } from './types';
 import { isArrayLike } from './type-guards';
 import {
@@ -26,7 +25,7 @@ import {
     validateAxesRange
 } from './utils';
 import { NdIter } from './nd-iter';
-import * as ops from '../src/ops';
+import * as ops from './ops';
 
 // noinspection DuplicatedCode
 export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
@@ -53,9 +52,9 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
     public static fromArray<T>(data: ArrayMap<T>[Rank.R3], dtype?: DataType): Array3D<T>;
     public static fromArray<T>(data: ArrayMap<T>[Rank.R2], dtype?: DataType): Array2D<T>;
     public static fromArray<T>(data: ArrayMap<T>[Rank.R1], dtype?: DataType): Array1D<T>;
-    public static fromArray<T, D extends Dim<number>>(data: T[], shape: D, dtype?: DataType): NdArray<T, InferRank<D>>;
+    public static fromArray<T, D extends IxA>(data: T[], shape: D, dtype?: DataType): NdArray<T, InferRank<D>>;
     public static fromArray<T, R extends Rank>(data: T[], shape: ShapeMap[R], dtype?: DataType): NdArray<T, R>;
-    public static fromArray<T, D extends Dim<number>>(a: T[] | ArrayMap<T>[InferRank<D>], b?: D | DataType, dtype: DataType = 'generic'): NdArray<T, InferRank<D>> {
+    public static fromArray<T, D extends IxA>(a: T[] | ArrayMap<T>[InferRank<D>], b?: D | DataType, dtype: DataType = 'generic'): NdArray<T, InferRank<D>> {
         if (b instanceof Array) {
             if (isArrayLike<T>(a)) {
                 const data = changeType(a, dtype);
@@ -74,19 +73,19 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
         }
     }
 
-    public static fill<T, D extends Dim<number>>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<number, InferRank<D>> {
+    public static fill<T, D extends IxA>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<number, InferRank<D>> {
         const len = shape.prod();
         const data = Array(len).fill(val);
         return NdArray.fromArray(data, shape, dtype);
     }
-    public static full<T, D extends Dim<number>>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<number, InferRank<D>> {
+    public static full<T, D extends IxA>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<number, InferRank<D>> {
         return NdArray.fill(shape, val, dtype);
     }
     public static eye<N extends number, M extends (number | N) = N>(n: N, m?: M, k: number = 0, dtype: DataType = 'float64'): Array2D<number> {
         m = m ?? n as M;
         const shape: [N, M] = [n, m];
         const len = shape.prod();
-        const data = NdArray.fromArray<number, Dim<2>>(Array<number>(len).fill(0), [n, m], dtype);
+        const data = NdArray.fromArray<number, Ix2>(Array<number>(len).fill(0), [n, m], dtype);
         const max = Math.min(n, m);
         for (let i = 0; i < max; i++) {
             const x = i + k;
@@ -98,15 +97,40 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
         }
         return data;
     }
-    public static ones<D extends Dim<number>>(shape: D, dtype: DataType = 'float64'): NdArray<number, InferRank<D>> {
+    public static ones<D extends IxA>(shape: D, dtype: DataType = 'float64'): NdArray<number, InferRank<D>> {
         return NdArray.fill(shape, 1., dtype);
     }
-    public static zeros<D extends Dim<number>>(shape: D, dtype: DataType = 'float64'): NdArray<number, InferRank<D>> {
+    public static zeros<D extends IxA>(shape: D, dtype: DataType = 'float64'): NdArray<number, InferRank<D>> {
         return NdArray.fill(shape, 0., dtype);
     }
 
     public static range(start: number, end?: number, step?: number, dtype: DataType = 'float64'): Array1D<number> {
         return NdArray.fromArray(Array.range(start, end!, step!), dtype);
+    }
+
+    public static linspace(start: number, end: number, num?: number): Array1D<number>;
+    public static linspace(start: number[], end: number[], num?: number): Array2D<number>;
+    public static linspace(start: number[] | number, end: number[] | number, num: number = 100): Array2D<number> | Array1D<number> {
+        if (typeof start === 'number' && typeof end === 'number') {
+            const data = Array.linspace(start, end, num);
+            return NdArray.fromArray(data);
+        }
+        if (start instanceof Array && end instanceof Array) {
+            const rowLength = num;
+            const colLength = start.length;
+            const shape: Ix2 = [rowLength, colLength];
+            const intervals = NdArray.fromArray(end).sub(NdArray.fromArray(start)).div(num - 1);
+            const x = NdArray.zeros(shape);
+            for (let row = 0; row < rowLength; row++) {
+                for (let col = 0; col < colLength; col++) {
+                    const s = start[col];
+                    const i = intervals.get(col);
+                    x.set([row, col], s + row * i);
+                }
+            }
+            return x;
+        }
+        throw new Error();
     }
 
     public get data(): ReadonlyArray<T> {
@@ -126,8 +150,8 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
     }
 
     public get(...axes: ShapeMap[R]): T;
-    public get<D extends Dim<number>>(...axes: D): NdArrayOut<T, R, D>;
-    public get<D extends Dim<number>>(...axes: D): unknown {
+    public get<D extends IxD<R>>(...axes: D): NdArrayOut<T, R, D>;
+    public get<D extends IxD<R>>(...axes: D): unknown {
         if (!validateAxesRange(axes, this._shape)) {
             throw Error('index out of range.');
         }
@@ -146,16 +170,12 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
     }
 
     public set(axes: ShapeMap[R], val: T): void;
-    public set<D extends Dim<number>>(axes: D, val: NdArrayIn<T, R, D>): void
-    public set<D extends Dim<number>>(axes: D | ShapeMap[R], val: NdArrayIn<T, R, D> | T): void {
+    public set<D extends IxD<R>>(axes: D, val: NdArrayIn<T, R, D>): void;
+    public set<D extends IxD<R>>(axes: D | ShapeMap[R], val: NdArrayIn<T, R, D> | T): void {
         const index = castAxesToIndex(axes, this._radix);
-        if (val instanceof Array) {
-            const data = flattenArray<T>(val);
-            for (let i = 0; i < data.length; i++) {
-                this._data[i + index] = data[i];
-            }
-        } else {
-            this._data[index] = val;
+        const data = flattenArray<T>(val);
+        for (let i = 0; i < data.length; i++) {
+            this._data[i + index] = data[i];
         }
     }
 
@@ -164,7 +184,7 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
         const shape = this._shape;
         for (let i = 0; i < data.length; i++) {
             const val = this._data[i];
-            const axes = castIndexToAxes(i, shape);
+            const axes = castIndexToAxes<R>(i, shape);
             data[i] = callbackfn(val, axes, i, this);
         }
         return NdArray.fromArray(data, shape, dtype) as unknown as NdArray<U, R>;
@@ -174,7 +194,7 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
         return new NdArray(this._data.slice(), this._shape, this.dtype);
     }
 
-    public reshape<U extends Dim<number>>(shape: U): NdArray<T, InferRank<U>> {
+    public reshape<U extends IxA>(shape: U): NdArray<T, InferRank<U>> {
         Object.assign(this, new NdArray(this._data, shape, this.dtype));
         return this as unknown as NdArray<T, InferRank<U>>;
     }
@@ -214,6 +234,10 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
     public all(this: NdArray<number | boolean, R>, axis?: number): NdArray<boolean, RankDown[R]> | boolean {
         return ops.all(this, axis);
     }
+
+    /**
+     * Returns the indices of the maximum values along an axis.
+     */
     public argmax(this: NdArray<number, R>): number;
     public argmax(this: NdArray<number, R>, axis: number): NdArray<number, RankDown[R]>;
     public argmax(this: NdArray<number, R>, axis?: number): NdArray<number, RankDown[R]> | number {
@@ -241,6 +265,9 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
         return ops.min(this, axis);
     }
 
+    /**
+     * Return the cumulative sum of the elements along a given axis.
+     */
     public cumsum(this: NdArray<number, R>): Array1D<number>;
     public cumsum(this: NdArray<number, R>, axis: number): NdArray<number, R>;
     public cumsum(this: NdArray<number, R>, axis?: number): NdArray<number, R> | Array1D<number> {
@@ -276,8 +303,34 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
         ops.divAssign(this, x);
     }
 
+    public sin(this: NdArray<number, R>): NdArray<number, R> {
+        return ops.sin(this);
+    }
+    public cos(this: NdArray<number, R>): NdArray<number, R> {
+        return ops.cos(this);
+    }
+    public tan(this: NdArray<number, R>): NdArray<number, R> {
+        return ops.tan(this);
+    }
+    public floor(this: NdArray<number, R>): NdArray<number, R> {
+        return ops.floor(this);
+    }
+    public ceil(this: NdArray<number, R>): NdArray<number, R> {
+        return ops.ceil(this);
+    }
+    public round(this: NdArray<number, R>): NdArray<number, R> {
+        return ops.round(this);
+    }
+    public abs(this: NdArray<number, R>): NdArray<number, R> {
+        return ops.abs(this);
+    }
+
+    /**
+     * Matrix product of two arrays.
+     * @param x
+     */
     public matmul(this: NdArray<number, Rank.R2>, x: NdArray<number, Rank.R2>): NdArray<number, Rank.R2> {
-        throw new Error('');
+        return ops.matMul(this, x);
     }
     // endregion
 }

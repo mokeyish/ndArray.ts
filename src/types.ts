@@ -11,19 +11,37 @@ export const float64 = 'float64';
 
 export type DataType = 'int8' | 'uint8' | 'int16' | 'uint16' | 'int32' | 'uint32' | 'float32' | 'float64' | 'generic';
 
+export interface FixedLengthArray<T, L extends number> extends Array<T> {
+    length: L;
+}
 
-export interface Dim<L extends number> extends Array<number> {
+interface Dim<L extends number> extends Array<number> {
     0: number;
     length: L;
 }
 
-export type Ix = Dim<number>;
 export type Ix1 = Dim<1>;
 export type Ix2 = Dim<2>;
 export type Ix3 = Dim<3>;
 export type Ix4 = Dim<4>;
 export type Ix5 = Dim<5>;
 export type Ix6 = Dim<6>;
+export type IxA = Ix1 | Ix2 | Ix3 | Ix4 | Ix5 | Ix6;
+
+export type IxD<D extends (IxA | Rank)> =
+    D extends Ix1 ? Ix1 :
+        D extends Rank.R1 ? Ix1 :
+            D extends Ix2 ? Ix2 | Ix1 :
+                D extends Rank.R2 ? Ix2 | Ix1 :
+                    D extends Ix3 ? Ix3 | Ix2 | Ix1 :
+                        D extends Rank.R3 ? Ix3 | Ix2 | Ix1 :
+                            D extends Ix4 ? Ix4 | Ix3 | Ix2 | Ix1 :
+                                D extends Rank.R4 ? Ix4 | Ix3 | Ix2 | Ix1 :
+                                    D extends Ix5 ? Ix5 | Ix4 | Ix3 | Ix2 | Ix1 :
+                                        D extends Rank.R5 ? Ix5 | Ix4 | Ix3 | Ix2 | Ix1 :
+                                            D extends Ix6 ? Ix6 | Ix5 | Ix4 | Ix3 | Ix2 | Ix1 :
+                                                D extends Rank.R6 ? Ix6 | Ix5 | Ix4 | Ix3 | Ix2 | Ix1 :
+                                                    never;
 
 export type TypedArray = Float64Array | Float32Array | Int32Array | Uint32Array;
 
@@ -31,7 +49,7 @@ export type RegularArray<T> = T[] | T[][] | T[][][] | T[][][][] | T[][][][][] | 
 
 
 export enum Rank {
-    R0 = 'R0',
+    // R0 = 'R0',
     R1 = 'R1',
     R2 = 'R2',
     R3 = 'R3',
@@ -41,13 +59,13 @@ export enum Rank {
 }
 
 export interface ShapeMap {
-    R0: Dim<number>;
-    R1: Dim<1>;
-    R2: Dim<2>;
-    R3: Dim<3>;
-    R4: Dim<4>;
-    R5: Dim<5>;
-    R6: Dim<6>;
+    // R0: Dim<number>;
+    R1: Ix1;
+    R2: Ix2;
+    R3: Ix3;
+    R4: Ix4;
+    R5: Ix5;
+    R6: Ix6;
 }
 
 export interface RankDown {
@@ -70,27 +88,23 @@ export interface ArrayMap<T> {
     R6: T[][][][][][];
 }
 
-export type InferRank<R extends Dim<number>> =
-    R extends Ix1 ? Rank.R1 :
-        R extends Ix2 ? Rank.R2 :
-            R extends Ix3 ? Rank.R3 :
-                R extends Ix4 ? Rank.R4 :
-                    R extends Ix5 ? Rank.R5 :
-                        R extends Ix6 ? Rank.R6 :
+export type InferRank<D extends IxA> =
+    D extends Ix1 ? Rank.R1 :
+        D extends Ix2 ? Rank.R2 :
+            D extends Ix3 ? Rank.R3 :
+                D extends Ix4 ? Rank.R4 :
+                    D extends Ix5 ? Rank.R5 :
+                        D extends Ix6 ? Rank.R6 :
                             never;
 
-
-
-
-// interface Ix {
-//     R0: never;
-//     R1: Dim<1>;
-//     R2: Dim<2>;
-//     R3: Dim<3>;
-//     R4: Dim<4>;
-//     R5: Dim<5>;
-//     R6: Dim<6>;
-// }
+export type InferIx<R extends Rank> =
+    R extends Rank.R1 ? Ix1 :
+        R extends Rank.R2 ? Ix2 :
+            R extends Rank.R3 ? Ix3 :
+                R extends Rank.R4 ? Ix4 :
+                    R extends Rank.R5 ? Ix5 :
+                        R extends Rank.R6 ? Ix5 :
+                            never;
 
 //
 // export interface AxesA {
@@ -117,22 +131,20 @@ export type ArrayLike4D<T> = T[][][][] | Array4D<T>;
 export type ArrayLike5D<T> = T[][][][][] | Array5D<T>;
 export type ArrayLike6D<T> = T[][][][][][] | Array6D<T>;
 
-export type NdArrayIn<T, R extends Rank, D extends Dim<number>> =
+export type NdArrayIn<T, R extends Rank, D extends IxA> =
     R extends Rank.R1 ? T :
-        R extends Rank.R2 ? (D extends ShapeMap[R] ? T : D extends Dim<1> ? ArrayLike1D<T> : never) :
-            R extends Rank.R3 ? (D extends ShapeMap[R] ? T : D extends Dim<2> ? ArrayLike1D<T> : D extends Dim<1> ? ArrayLike2D<T> : never) :
-                R extends Rank.R4 ? (D extends ShapeMap[R] ? T : D extends Dim<3> ? ArrayLike1D<T> : D extends Dim<2> ? ArrayLike2D<T> : D extends Dim<1> ? ArrayLike3D<T> : never) :
-                    R extends Rank.R5 ? (D extends ShapeMap[R] ? T : D extends Dim<4> ? ArrayLike1D<T> : D extends Dim<3> ? ArrayLike2D<T> : D extends Dim<2> ? ArrayLike3D<T> : D extends Dim<1> ? ArrayLike4D<T> : never) :
-                        R extends Rank.R6 ? (D extends ShapeMap[R] ? T : D extends Dim<5> ? ArrayLike1D<T> : D extends Dim<4> ? ArrayLike2D<T> : D extends Dim<3> ? ArrayLike3D<T> : D extends Dim<2> ? ArrayLike4D<T> : D extends Dim<1> ? ArrayLike5D<T> : never) :
+        R extends Rank.R2 ? (D extends ShapeMap[R] ? T : D extends Ix1 ? ArrayLike1D<T> : never) :
+            R extends Rank.R3 ? (D extends ShapeMap[R] ? T : D extends Ix2 ? ArrayLike1D<T> : D extends Ix1 ? ArrayLike2D<T> : never) :
+                R extends Rank.R4 ? (D extends ShapeMap[R] ? T : D extends Ix3 ? ArrayLike1D<T> : D extends Ix2 ? ArrayLike2D<T> : D extends Ix1 ? ArrayLike3D<T> : never) :
+                    R extends Rank.R5 ? (D extends ShapeMap[R] ? T : D extends Ix4 ? ArrayLike1D<T> : D extends Ix3 ? ArrayLike2D<T> : D extends Ix2 ? ArrayLike3D<T> : D extends Ix1 ? ArrayLike4D<T> : never) :
+                        R extends Rank.R6 ? (D extends ShapeMap[R] ? T : D extends Ix5 ? ArrayLike1D<T> : D extends Ix4 ? ArrayLike2D<T> : D extends Ix3 ? ArrayLike3D<T> : D extends Ix2 ? ArrayLike4D<T> : D extends Ix1 ? ArrayLike5D<T> : never) :
                             never;
 
-export type NdArrayOut<T, R extends Rank, D extends Dim<number>> =
+export type NdArrayOut<T, R extends Rank, D extends IxA> =
     R extends Rank.R1 ? T :
-        R extends Rank.R2 ? (D extends ShapeMap[R] ? T : D extends Dim<1> ? Array1D<T> : never) :
-            R extends Rank.R3 ? (D extends ShapeMap[R] ? T : D extends Dim<2> ? Array1D<T> : D extends Dim<1> ? Array2D<T> : never) :
-                R extends Rank.R4 ? (D extends ShapeMap[R] ? T : D extends Dim<3> ? Array1D<T> : D extends Dim<2> ? Array2D<T> : D extends Dim<1> ? Array3D<T> : never) :
-                    R extends Rank.R5 ? (D extends ShapeMap[R] ? T : D extends Dim<4> ? Array1D<T> : D extends Dim<3> ? Array2D<T> : D extends Dim<2> ? Array3D<T> : D extends Dim<1> ? Array4D<T> : never) :
-                        R extends Rank.R6 ? (D extends ShapeMap[R] ? T : D extends Dim<5> ? Array1D<T> : D extends Dim<4> ? Array2D<T> : D extends Dim<3> ? Array3D<T> : D extends Dim<2> ? Array4D<T> : D extends Dim<1> ? Array5D<T> : never) :
+        R extends Rank.R2 ? (D extends ShapeMap[R] ? T : D extends Ix1 ? Array1D<T> : never) :
+            R extends Rank.R3 ? (D extends ShapeMap[R] ? T : D extends Ix2 ? Array1D<T> : D extends Ix1 ? Array2D<T> : never) :
+                R extends Rank.R4 ? (D extends ShapeMap[R] ? T : D extends Ix3 ? Array1D<T> : D extends Ix2 ? Array2D<T> : D extends Ix1 ? Array3D<T> : never) :
+                    R extends Rank.R5 ? (D extends ShapeMap[R] ? T : D extends Ix4 ? Array1D<T> : D extends Ix3 ? Array2D<T> : D extends Ix2 ? Array3D<T> : D extends Ix1 ? Array4D<T> : never) :
+                        R extends Rank.R6 ? (D extends ShapeMap[R] ? T : D extends Ix5 ? Array1D<T> : D extends Ix4 ? Array2D<T> : D extends Ix3 ? Array3D<T> : D extends Ix2 ? Array4D<T> : D extends Ix1 ? Array5D<T> : never) :
                             never;
-
-

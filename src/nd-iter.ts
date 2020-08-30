@@ -11,7 +11,7 @@ export class NdIter<T, R extends Rank> {
         if (this._index === -1) {
             throw new Error('please run iter.moveNext() first.');
         }
-        return castIndexToAxes(this._index, this.ndArray.shape);
+        return castIndexToAxes<R>(this._index, this.ndArray.shape);
     }
     public get current(): T {
         if (this._index === -1) {

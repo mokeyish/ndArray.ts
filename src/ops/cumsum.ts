@@ -3,6 +3,10 @@ import { iterAxes } from '../utils';
 import { NdArray } from '../nd-array';
 import { Array1D, Rank, ShapeMap } from '../types';
 
+/**
+ * Return the cumulative sum of the elements along a given axis.
+ * @param ndArray
+ */
 export function cumsum<R extends Rank>(ndArray: NdArray<number, R> | number[]): Array1D<number>;
 export function cumsum<R extends Rank>(ndArray: NdArray<number, R>, axis?: number): NdArray<number, R>;
 export function cumsum<R extends Rank>(ndArray: NdArray<number, R> | number[], axis?: number): NdArray<number, R> | Array1D<number> {
@@ -22,7 +26,7 @@ export function cumsum<R extends Rank>(ndArray: NdArray<number, R> | number[], a
         throw new Error('axis out of shape range');
     }
 
-    const ret = NdArray.fromArray(Array<number>(shape.reduce((p, c) => p * c)), shape) as unknown as NdArray<number, R>;
+    const ret = NdArray.fromArray<number, R>(Array<number>(shape.reduce((p, c) => p * c)), shape);
 
     let axes = Array<number>(shape.length).fill(0) as ShapeMap[R];
     while (true) {

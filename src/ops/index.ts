@@ -17,3 +17,12 @@ export * from './min';
 export * from './all';
 export * from './cumsum';
 export * from './argmax';
+export * from './mat-mul';
+
+export * from './sin';
+export * from './cos';
+export * from './tan';
+export * from './floor';
+export * from './ceil';
+export * from './round';
+export * from './abs';
