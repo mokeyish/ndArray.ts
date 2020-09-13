@@ -18,6 +18,7 @@ export * from './all';
 export * from './cumsum';
 export * from './argmax';
 export * from './mat-mul';
+export * from './transpose';
 
 export * from './sin';
 export * from './cos';

@@ -73,12 +73,12 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
         }
     }
 
-    public static fill<T, D extends IxA>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<number, InferRank<D>> {
+    public static fill<T, D extends IxA>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<T, InferRank<D>> {
         const len = shape.prod();
         const data = Array(len).fill(val);
         return NdArray.fromArray(data, shape, dtype);
     }
-    public static full<T, D extends IxA>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<number, InferRank<D>> {
+    public static full<T, D extends IxA>(shape: D, val: T, dtype: DataType = 'generic'): NdArray<T, InferRank<D>> {
         return NdArray.fill(shape, val, dtype);
     }
     public static eye<N extends number, M extends (number | N) = N>(n: N, m?: M, k: number = 0, dtype: DataType = 'float64'): Array2D<number> {
@@ -331,6 +331,20 @@ export class NdArray<T, R extends Rank = Rank> implements NdArray<T, R> {
      */
     public matmul(this: NdArray<number, Rank.R2>, x: NdArray<number, Rank.R2>): NdArray<number, Rank.R2> {
         return ops.matMul(this, x);
+    }
+
+    /**
+     * transpose
+     */
+    public t(this: NdArray<T, Rank.R2>): NdArray<T, Rank.R2> {
+        return this.transpose();
+    }
+
+    /**
+     * transpose
+     */
+    public transpose(this: NdArray<T, Rank.R2>): NdArray<T, Rank.R2> {
+        return ops.transpose(this);
     }
     // endregion
 }
