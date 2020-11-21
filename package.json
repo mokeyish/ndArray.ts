@@ -1,6 +1,6 @@
 {
   "name": "@tszone/ndarray",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "author": "YISH",
   "license": "MIT",
   "description": "ndarray for typescript",
@@ -24,7 +24,7 @@
     "lint": "tslint --project ./tsconfig.json --fix"
   },
   "dependencies": {
-    "@tszone/ext": "1.0.6"
+    "@tszone/ext": "1.0.10"
   },
   "devDependencies": {
     "@types/jest": "^26.0.9",

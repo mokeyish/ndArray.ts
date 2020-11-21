@@ -482,11 +482,12 @@
   dependencies:
     "@sinonjs/commons" "^1.7.0"
 
-"@tszone/ext@1.0.1":
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/@tszone/ext/-/ext-1.0.1.tgz#5404969d00eac4b346e82ef43d00b496e383637e"
-  integrity sha512-TgcKXIOi0RwnLpW06cVgPDtQYBbVtt4lSG9koZRYB7N+XfCFht5yMEeiUCpOuwoPonsU2nRCygZRtLinqfenDQ==
+"@tszone/ext@1.0.10":
+  version "1.0.10"
+  resolved "https://registry.yarnpkg.com/@tszone/ext/-/ext-1.0.10.tgz#6919b627d318289e95b8535f3c05d9264a05c420"
+  integrity sha512-3xLoH94L+4Kk/zC7Ygk8YxcoNPLlHKScohVKoqC2Z0Dz8qGNeoXYEB+slvMVTA6jbQ9m+nCDsGh/m7IQhYfWKQ==
   dependencies:
+    random-js "^2.1.0"
     seedrandom "^3.0.5"
 
 "@types/babel__core@^7.0.0", "@types/babel__core@^7.1.7":
@@ -2838,6 +2839,11 @@ qs@~6.5.2:
   version "6.5.2"
   resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.2.tgz#cb3ae806e8740444584ef154ce8ee98d403f3e36"
   integrity sha512-N5ZAX4/LxJmF+7wN74pUD6qAh9/wnvdQcjq9TZjevvXzSUo7bfmw91saqMjzGS2xq91/odN2dW/WOl7qQHNDGA==
+
+random-js@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/random-js/-/random-js-2.1.0.tgz#0c03238b0a4f701f7a4c7303036ade3083d8ee14"
+  integrity sha512-CRUyWmnzmZBA7RZSVGq0xMqmgCyPPxbiKNLFA5ud7KenojVX2s7Gv+V7eB52beKTPGxWRnVZ7D/tCIgYJJ8vNQ==
 
 react-is@^16.12.0:
   version "16.13.1"
